@@ -14,8 +14,11 @@ export type Example = {
   /** Shown as a margin note next to `about`. */
   note?: string;
   /** What the page shows: "video", compare.mp4 at this size in CSS px (the file is 2x); or "live", the
-   *  clone itself in an iframe of this size (`live` with &embed). */
-  show: { kind: "video" | "live"; width: number; height: number };
+   *  clone itself in an iframe of this size (`live` with &embed). `stacked`: the two takes are one above the
+   *  other (scripts/record-media.ts stacks recordings wider than tall); assumed when taller than wide.
+   *  `background`: the live frame's colour around and behind the iframe (default: the clerk.com cards' dark).
+   *  `try`: what to do with a live copy on a desktop, under it (default "hover it"; on a phone it says "tap it"). */
+  show: { kind: "video" | "live"; width: number; height: number; stacked?: boolean; background?: string; try?: string };
   /** The clone running on its own. */
   live: string;
   /** What was measured, how, and the number. */
@@ -23,8 +26,128 @@ export type Example = {
 };
 
 const CLERK = { name: "clerk.com", url: "https://clerk.com/" };
+const NEXTJS = { name: "nextjs.org", url: "https://nextjs.org/" };
 
 export const examples: Example[] = [
+  {
+    slug: "vercel-previews",
+    title: "Vercel Toolbar",
+    source: { name: "vercel.com", url: "https://vercel.com/products/previews" },
+    about:
+      "A dark toolbar floats between seven tilted tags, and they all fade in one after another. Hover a button and its tag takes its colour while the other tags blur and the other icons dim. Grab the toolbar and drag it: the tags blur as it moves, and it glides back when you let go.",
+    note: "vercel.com updates the hover a moment after the pointer arrives, when React gets to it. The copy waits the same moment, so every change starts on the same frame.",
+    show: { kind: "live", width: 560, height: 260, background: "#fafafa" },
+    live: "/examples/vercel-previews/?",
+    results: [
+      ["Frame match", "frames identical: the entrance, all seven buttons, a drag", "417 of 417"],
+      ["Timing", "start and end of every fade, blur and colour change", "0 ms"],
+      ["Layout", "every element, at rest and in each hover state", "≤ 0.02 px"],
+    ],
+  },
+  {
+    slug: "vercel-hero",
+    title: "Drop to deploy",
+    source: { name: "vercel.com", url: "https://vercel.com/" },
+    about:
+      "A black triangle sits in vercel.com’s hero, lit by 72 LEDs along its edges while soft lines of light run round it. Bring the pointer close and the edges facing it light up. Drag a file over the page and it turns into a prism: red, green and blue light spreads from its edges and “Drop to deploy” fades in.",
+    note: "This is vercel.com’s own renderer, read from the page: the same shaders, run in a worker as on vercel.com. vercel.com draws it with WebGPU where it can and the copy with WebGL, vercel.com’s own fallback; the two place the grain on the triangle’s rim differently, and nothing else.",
+    show: { kind: "live", width: 560, height: 373, background: "#fafafa", try: "drag any file onto it" },
+    live: "/examples/vercel-hero/?",
+    results: [
+      ["Frame match", "pixels that differ, 803 frames: entrance, pointer, drop, click, nav", "≤ 1 level"],
+      ["Drop timing", "label, text and colours, in and out", "0 ms"],
+      ["WebGPU original", "pixels more than 8 levels off, same as vercel.com’s own WebGL", "0.16 %"],
+    ],
+  },
+  {
+    slug: "vercel-fluid",
+    title: "Fluid ocean",
+    source: { name: "vercel.com", url: "https://vercel.com/fluid" },
+    about:
+      "Behind the hero, a grid of 512 × 512 tiny dots rolls like a slow sea. Each dot snaps to a 4.4 px grid, so the waves read as a dot matrix. It fades in over 0.7 s once the first frame is ready. Without WebGPU you get a still of the same sea.",
+    note: "This is vercel.com’s own WebGPU renderer, ported: the same shaders, constants and seeded noise. Started on the same frame, it draws the same pixels, in light and dark.",
+    show: { kind: "video", width: 560, height: 376, stacked: true },
+    live: "/examples/vercel-fluid/",
+    results: [
+      ["Frame match", "pixels that differ over 12 s of sea, light and dark, at 1x and 2x", "0 px"],
+      ["Speed", "simulated seconds per second (vercel.com: 0.600)", "0.600"],
+      ["Fade-in", "opacity, frame by frame", "identical"],
+    ],
+  },
+  {
+    slug: "vercel-workflow",
+    title: "Inspect every run",
+    source: { name: "vercel.com", url: "https://vercel.com/workflow" },
+    about:
+      "A copy of the Vercel dashboard shows one run of a workflow. When it scrolls into view the run plays: the status turns to Running, the duration counts up to 925 ms and the six steps fill in one after another, each with its own timer. Then the status turns to Completed.",
+    note: "Each bar keeps its own clock and only moves while at least 35 % of it is on screen, as on vercel.com. Scroll away mid-run and it waits for you.",
+    show: { kind: "video", width: 560, height: 454, stacked: true },
+    live: "/examples/vercel-workflow/",
+    results: [
+      ["Frame match", "pixels that differ over 3 s after scroll-in", "0.0001 %"],
+      ["Bars", "width of all six spans, every frame", "0 px"],
+      ["Timing", "start and end of every span and status change", "0 ms"],
+    ],
+  },
+  {
+    slug: "turborepo-gauge",
+    title: "Speedometer",
+    source: { name: "turborepo.com", url: "https://turborepo.com/" },
+    about:
+      "A speedometer sits next to the headline, its needle resting near the red end. Point at it and the needle revs into the red, hits the end stop and settles; move away and it drops back. Below, the compute hours saved roll up to the live count once the page loads, then tick up every 10 s.",
+    note: "The gauge is turborepo.com’s own SVG and the needle runs the page’s own spring. The hours are live on turborepo.com; the copy starts from the count read on 30 October 2026 and grows at the rate measured then, so its last digits differ.",
+    show: { kind: "live", width: 560, height: 500, background: "#fafafa" },
+    live: "/examples/turborepo-gauge/?",
+    results: [
+      ["Frame match", "pixels that differ over 4 s of hovering, at 1x and 2x, light and dark", "0 px"],
+      ["Pointer", "from the pointer to the needle’s first move (turborepo.com: 32–34 ms)", "31–33 ms"],
+      ["Counter", "start of the roll after the first frame (turborepo.com: 466–608 ms)", "456–469 ms"],
+    ],
+  },
+  {
+    slug: "nextjs-optimizations",
+    title: "Built-in Optimizations",
+    source: NEXTJS,
+    about:
+      "Three image frames, from the original down to a 375 px copy, each with a dotted mountain drawn on a canvas. Move the pointer over them and the dots within 40 px light up in six bands of blue, darkest at the centre.",
+    note: "This is nextjs.org’s own canvas code, ported line for line with its dot data, so it draws the same pixels.",
+    show: { kind: "live", width: 496, height: 514, background: "#fafafa" },
+    live: "/examples/nextjs-features/?card=optimizations",
+    results: [
+      ["Frame match", "frames identical while the pointer crosses it, at 2x", "129 of 131"],
+      ["At rest", "canvas pixels against nextjs.org’s, 150 frames", "identical"],
+      ["Pointer", "glow, arrow and text colour against nextjs.org", "≤ 17 ms"],
+    ],
+  },
+  {
+    slug: "nextjs-streaming",
+    title: "Dynamic HTML Streaming",
+    source: NEXTJS,
+    about:
+      "A wireframe page sits on a grid. Once the card is well into view, four streaks of blue run along the grid lines into the page, each on its own loop. Every 5 s the image turns into an avatar and back, and every 8 s the content blocks change layout. Hover it and the streaks restart on a quicker 2 s loop.",
+    note: "nextjs.org runs it on Motion. The copy ports the part it uses, down to Motion’s rounding of time to whole milliseconds.",
+    show: { kind: "live", width: 496, height: 514, background: "#fafafa" },
+    live: "/examples/nextjs-features/?card=streaming",
+    results: [
+      ["Timing", "start of every streak, swap and layout change", "0 ms"],
+      ["Motion", "40 animated values, every frame for 10 s", "identical"],
+      ["Frame match", "frames identical at 2x over 6 s", "148 of 150"],
+    ],
+  },
+  {
+    slug: "nextjs-rsc",
+    title: "React Server Components",
+    source: NEXTJS,
+    about:
+      "Dashes flow down two edges of a tree of six nodes while blue arcs glide round three of them and pulse. Hover the card and both speed up and the arcs thicken, easing back over about a second when you leave. It pauses while off screen.",
+    show: { kind: "live", width: 496, height: 514, background: "#fafafa" },
+    live: "/examples/nextjs-features/?card=rsc",
+    results: [
+      ["Motion", "17 animated values, every frame for 10 s", "identical"],
+      ["Frame match", "frames identical at 2x over 6 s", "146 of 150"],
+      ["Hover", "speed-up and slow-down against nextjs.org", "≤ 17 ms"],
+    ],
+  },
   {
     slug: "stripe-agentic-commerce",
     title: "Agentic commerce",

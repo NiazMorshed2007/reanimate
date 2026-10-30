@@ -63,10 +63,16 @@ By default it matches the motion and leaves the look to you. Ask for more or les
 
 ## Examples
 
-Three cards from the stripe.com homepage, the integrations visual from workos.com/atlas, the feature cards from clerk.com, the demo under the liveblocks.io/comments hero, the cube in the resend.com hero and React Bits Pro's Fading Stars, each cloned by its own agent running this skill, most in 30 to 80 minutes. The [site](site/) shows each one next to a recording of the original, except the Clerk cards, which run live in the page.
+Six animations from vercel.com, nextjs.org and turborepo.com, three cards from the stripe.com homepage, the integrations visual from workos.com/atlas, the feature cards from clerk.com, the demo under the liveblocks.io/comments hero, the cube in the resend.com hero and React Bits Pro's Fading Stars, each cloned by its own agent running this skill, most in 30 to 90 minutes. The [site](site/) runs the ones you can hover or drag live in the page, and shows the others next to a recording of the original.
 
 | Clone | Built with | Measured against the original |
 |---|---|---|
+| **Vercel Toolbar** (vercel.com/products/previews): a toolbar among seven tags; hover a button and its tag takes its colour while the others blur | HTML, SVG, CSS | 417 of 417 frames identical; every change on the same frame |
+| **Drop to deploy** (vercel.com): the hero triangle, lit by the pointer; drag a file over the page and it turns into a prism | WebGL2, Web Workers | 785 of 803 frames byte-identical, the rest within 1 level |
+| **Fluid ocean** (vercel.com/fluid): 262,144 dots rolling like a sea behind the hero | WebGPU, Web Workers | 0 px differ over 12 s, light and dark |
+| **Inspect every run** (vercel.com/workflow): a dashboard playing one run of a workflow | HTML, SVG | all six bars 0 px off; every step on time (0 ms) |
+| **Speedometer** (turborepo.com): a needle that revs into the red under the pointer, and a counter rolling up | SVG, springs | 0 px differ while hovering, light and dark |
+| **Feature cards** (nextjs.org): image frames lit by the pointer, streaks streaming into a page, a component tree | canvas, SVG | every animated value identical on every frame |
 | **Agentic commerce**: a chat over a 10,000-point particle ring | three.js, CSS | chat timing within 43 ms, layout within 0.05 px |
 | **Card issuing**: a Visa card that tilts toward the pointer | three.js, Web Workers | 0.03 % of pixels differ at rest; tilt within 0.4 px |
 | **Stablecoins and crypto**: a dotted globe with flying payments | three.js, Web Workers | globe pose exact; arcs and labels within stripe.com's own spread |
@@ -114,4 +120,4 @@ Only `skills/reanimate/` is installed by the skills CLI; `site/` is the website 
 
 ## License
 
-[MIT](LICENSE). The examples recreate parts of stripe.com, workos.com, clerk.com, liveblocks.io, resend.com and pro.reactbits.dev as a study of the technique; it is not affiliated with or endorsed by Stripe, WorkOS, Clerk, Liveblocks, Resend or React Bits. All trademarks belong to their owners.
+[MIT](LICENSE). The examples recreate parts of vercel.com, nextjs.org, turborepo.com, stripe.com, workos.com, clerk.com, liveblocks.io, resend.com and pro.reactbits.dev as a study of the technique; it is not affiliated with or endorsed by Vercel, Stripe, WorkOS, Clerk, Liveblocks, Resend or React Bits. All trademarks belong to their owners.

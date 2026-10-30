@@ -195,8 +195,8 @@ export default function Home() {
 
         <Section id="examples" n={5} title="Examples">
           <p>
-            Hover a clerk.com card to play it, or on a phone just scroll to it. The copies use the free Geist font, so only the lettering differs. For the others, the original plays on the left or on top, and the copy next to it or
-            below.
+            The copies that react to you run live in the page: hover them, or on a phone tap or scroll to them, and drag any file onto the vercel.com triangle. The clerk.com copies use the free Geist font, so only their lettering
+            differs. For the others, the original plays on the left or on top, and the copy next to it or below.
           </p>
           <nav className="strip" aria-label="Examples">
             {examples.map((e) => (
@@ -214,8 +214,8 @@ export default function Home() {
                 </h3>
                 <Details e={e} />
               </div>
-              {e.show.kind === "video" && e.show.height > e.show.width ? (
-                // wider than tall: the two takes are stacked
+              {e.show.kind === "video" && (e.show.stacked || e.show.height > e.show.width) ? (
+                // the two takes are stacked
                 <figure className="figure">
                   <CompareVideo src={media(e.slug, "compare.mp4")} width={e.show.width} height={e.show.height} label={`${e.title}: ${e.source.name} on top, the copy below`} />
                   <figcaption className="figure__caption">
@@ -233,10 +233,10 @@ export default function Home() {
                 </figure>
               ) : (
                 <figure className="figure">
-                  <LiveCard src={`${e.live}&embed`} width={e.show.width} height={e.show.height} label={`${e.title}, the copy, running live`} />
+                  <LiveCard src={`${e.live}&embed`} width={e.show.width} height={e.show.height} background={e.show.background} label={`${e.title}, the copy, running live`} />
                   <figcaption className="figure__caption">
                     <span>
-                      the copy, <span className="on-hover">hover it</span>
+                      the copy, <span className="on-hover">{e.show.try ?? "hover it"}</span>
                       <span className="on-touch">tap it</span> ·{" "}
                       <a href={e.live} target="_blank" rel="noreferrer">
                         open on its own ↗
@@ -257,8 +257,8 @@ export default function Home() {
             <a href={REPO}>GitHub</a> · MIT licence · built with reanimate
           </span>
           <span>
-            The examples recreate parts of stripe.com, workos.com, clerk.com, liveblocks.io, resend.com and pro.reactbits.dev as a study of the technique. Not affiliated with or endorsed by Stripe, WorkOS, Clerk, Liveblocks, Resend or React Bits. All trademarks belong
-            to their owners.
+            The examples recreate parts of vercel.com, nextjs.org, turborepo.com, stripe.com, workos.com, clerk.com, liveblocks.io, resend.com and pro.reactbits.dev as a study of the technique. Not affiliated with or endorsed by
+            Vercel, Stripe, WorkOS, Clerk, Liveblocks, Resend or React Bits. All trademarks belong to their owners.
           </span>
         </footer>
       </main>
