@@ -5,12 +5,14 @@ export const W = 1920;
 export const H = 1080;
 export const FPS = 60;
 
-// The soundtrack (assets/soundtrack.mp3, see the README): 90 bpm, cut so a downbeat lands at 2.166 s.
+// The grid the cuts land on: 90 bpm, bar 0 at 2.166 s (the video was first cut to a track at that tempo).
 export const BEAT = 60 / 90;
 export const T0 = 2.166;
 export const beat = (n) => T0 + n * BEAT;
 export const bar = (n) => T0 + n * 4 * BEAT;
-export const DURATION = 64.166; // bar(23.25)
+export const DURATION = 47.5; // bar(17)
+// "how it works" (how.js) is timed as if it started at 12.86 s; it plays this much later, after the clones
+export const HOW_SHIFT = 16 * BEAT;
 
 export const INK = "#141414";
 export const MUTED = "#737373";

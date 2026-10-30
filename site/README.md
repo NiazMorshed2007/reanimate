@@ -58,7 +58,7 @@ Then either:
 | `public/media/` | Comparisons and posters, one folder per example. `stripe-bento/` is the entrance at the top of the page. |
 | `scripts/record-media.ts` | Records the examples' media and the README animations. |
 | `marketing/launch.md` | Launch post drafts. |
-| `video/` | The 64-second demo video, as a page drawn frame by frame from the time and rendered to mp4 ([`video/README.md`](video/README.md)). The site serves it at `/demo.mp4` (`public/demo.mp4`). |
+| `video/` | The 47-second demo video, as a page drawn frame by frame from the time and rendered to mp4 ([`video/README.md`](video/README.md)). The site serves it at `/demo.mp4` (`public/demo.mp4`). |
 
 ## About the examples
 

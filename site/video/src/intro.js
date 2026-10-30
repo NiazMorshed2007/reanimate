@@ -1,12 +1,13 @@
 // "/reanimate" slides in with onion-skin frames trailing behind it, the way the site's mark moves. Then it
-// becomes the fixed column of a picker wheel whose other column scrolls through things to ask for, one
-// every two beats, like setting an alarm. The last pick is entered and the line rises to become the
-// header of "how it works", with a spinner that turns into a check when the copy matches.
-import { ACCENT, BEAT, FAINT, INK, SUBTLE, T0, W, beat, bezier, blurFade, clamp, ease, el, lerp, measure, mix, presence, prog, put, setStyle } from "./lib.js";
+// becomes the fixed column of a picker wheel whose other column scrolls through things to ask for, one a
+// beat, like setting an alarm. The last pick is entered at 5.8 s and the line dives into the screen as the
+// clones come in; it comes back as the header of "how it works", with a spinner that turns into a check
+// when the copy matches.
+import { ACCENT, BEAT, FAINT, HOW_SHIFT, INK, SUBTLE, T0, W, beat, bezier, blurFade, clamp, ease, el, lerp, measure, mix, presence, prog, put, setStyle } from "./lib.js";
 
 export const name = "intro";
 export const from = 0;
-export const to = 28.85;
+export const to = 28.85 + HOW_SHIFT;
 
 const WORD = "/reanimate";
 const BIG = 168; // title size, px
@@ -19,7 +20,9 @@ const GAP = 24; // between "/reanimate" and the prompt
 const TAIL = 96; // room after the prompt for the caret and the key
 const HEADER_Y = 96;
 const HEADER_S = 0.44;
-export const MATCH_AT = 27.62; // the spinner in the header turns into a check (how.js: round 4)
+export const MATCH_AT = 27.62; // the spinner in the header turns into a check (how.js: round 4, in its own time)
+const HEADER_IN = 12.86 + HOW_SHIFT - 0.45; // the line is back as the header
+const HEADER_OUT = 28.38 + HOW_SHIFT;
 
 // the sources in [brackets] are tinted when the row is picked; the last one is "how it works"' header
 const PROMPTS = [
@@ -37,13 +40,13 @@ const PROMPTS = [
 const LAST = PROMPTS.length - 1;
 const promptHtml = (p) => p.replace(/\[([^\]]+)\]/g, `<span class="intro-src">$1</span>`);
 
-// The wheel position (index of the row in the middle) over time: a step every two beats, landing on
-// the beat, then a flick through the rest that settles on the last prompt.
+// The wheel position (index of the row in the middle) over time: a step every beat, landing on the
+// beat, then a flick through the rest that settles on the last prompt.
 const SPIN = bezier(0.5, 0, 0.12, 1);
 const STEPS = [
-  [4.4, 5.12, -2.6, 0, ease.expo],
-  ...[6, 8, 10, 12].map((n, i) => [beat(n) - 0.62, beat(n) + 0.04, i, i + 1, ease.soft]),
-  [beat(13) + 0.12, beat(15), 4, LAST, SPIN],
+  [1.9, 2.5, -2.6, 0, ease.expo],
+  ...[1, 2, 3].map((n, i) => [beat(n) - 0.36, beat(n) + 0.02, i, i + 1, ease.soft]),
+  [beat(3) + 0.12, beat(5), 3, LAST, SPIN],
 ];
 function wheelAt(t) {
   let p = STEPS[0][2];
@@ -104,31 +107,31 @@ export function render(t) {
   const v = (wheelAt(t + 0.008) - wheelAt(t - 0.008)) / 0.016; // rows per second
 
   // ---- the word: slides in from the left, onion skins trailing; then shrinks into the wheel's line ----
-  const slide = (u) => -230 * (1 - ease.outQuart(prog(u, 0.25, T0 + 0.05)));
-  const toWheel = ease.inOut(prog(t, 3.9, 4.6));
+  const slide = (u) => -230 * (1 - ease.outQuart(prog(u, 0.1, 1.3)));
+  const toWheel = ease.inOut(prog(t, 1.85, 2.4));
   const xLeft = lerp(W / 2 - wordW / 2, xW, toWheel) + slide(t) * (1 - toWheel);
   const yC = lerp(510, MID, toWheel);
   const s = lerp(1, sW, toWheel);
   put(word, { x: xLeft, y: yC - BIG / 2, s });
   chars.forEach((c, i) => {
-    const a = ease.expo(prog(t, 0.32 + i * 0.07, 1.25 + i * 0.07));
+    const a = ease.expo(prog(t, 0.12 + i * 0.04, 0.75 + i * 0.04));
     put(c, { o: a, y: (1 - a) * 46, blur: (1 - a) * 18 });
   });
-  const skins = presence(t, 0.35, 0.5, T0 - 0.1, 0.5).v;
+  const skins = presence(t, 0.12, 0.35, 1.15, 0.4).v;
   ghosts.forEach((g, k) => {
     const lag = (k + 1) * 0.085;
     put(g, { o: skins * clamp((slide(t) - slide(t - lag)) / 18), x: xLeft - slide(t) + slide(t - lag), y: yC - BIG / 2, blur: 1 + k * 1.2 });
   });
 
-  const g = presence(t, 0.6, 1.8, 12.4, 1.2).v;
-  const bloom = Math.exp(-(((t - T0 - 0.25) / 0.7) ** 2));
+  const g = presence(t, 0.2, 1.0, 5.8, 0.45).v;
+  const bloom = Math.exp(-(((t - 1.4) / 0.6) ** 2));
   put(glow, { o: g * (0.55 + 0.45 * bloom), s: 0.92 + 0.12 * bloom, y: lerp(0, 30, toWheel) });
 
-  blurFade(tagline, t, { inAt: 2.42, inDur: 0.7, outAt: 3.9, outDur: 0.38, dy: 16, blur: 12 });
+  blurFade(tagline, t, { inAt: 0.75, inDur: 0.5, outAt: 1.85, outDur: 0.3, dy: 16, blur: 12 });
 
   // ---- the wheel ----
-  const live = presence(t, 4.4, 0.6, 12.86, 0.45).a;
-  const scatter = ease.inOutCubic(prog(t, 12.86, 13.36));
+  const live = presence(t, 1.9, 0.5).a;
+  const scatter = ease.inOutCubic(prog(t, 6.0, 6.3)); // all but the picked row, for good
   const spinBlur = Math.min(9, Math.abs(v) * 0.75);
   rows.forEach((row, i) => {
     const d = i - p;
@@ -152,37 +155,36 @@ export function render(t) {
   // the band behind the picked row, as wide as the prompt in it
   const i0 = clamp(Math.floor(p), 0, LAST), i1 = clamp(Math.ceil(p), 0, LAST);
   const pw = lerp(promptW[i0], promptW[i1], p - Math.floor(p));
-  const bandIn = ease.expo(prog(t, 4.46, 5.1));
+  const bandIn = ease.expo(prog(t, 1.95, 2.5));
   const bandL = xW - 36, bandR = xP + pw + TAIL;
   setStyle(band, "width", `${(bandR - bandL).toFixed(1)}px`);
   put(band, { o: bandIn, x: bandL, y: MID - 52, sx: lerp(0.94, 1, bandIn) });
 
   const settled = clamp(1 - Math.abs(v) * 0.7);
   const blink = ((t - T0) / BEAT) % 1 < 0.56 ? 1 : 0;
-  put(caret, { o: presence(t, 5.1, 0.2, 12.05, 0.15).v * settled * blink, x: xP + pw + 12, y: MID - 32 });
+  put(caret, { o: presence(t, 2.5, 0.2, 5.45, 0.12).v * settled * blink, x: xP + pw + 12, y: MID - 32 });
 
-  const k = presence(t, 12.22, 0.4, 13.0, 0.3, ease.outBack);
-  const press = Math.sin(Math.PI * prog(t, 12.66, 12.92));
+  const k = presence(t, 5.4, 0.3, 6.3, 0.25, ease.outBack);
+  const press = Math.sin(Math.PI * prog(t, 5.76, 5.98));
   put(key, { o: k.v, x: xP + promptW[LAST] + 16, y: MID - 32 + press * 3, s: lerp(0.6, 1, k.a) * (1 - press * 0.08), blur: (1 - k.a) * 8 + k.b * 8 });
   setStyle(key, "background-color", mix("#ffffff", "#ececf0", press));
 
-  const st = presence(t, 13.3, 0.4);
-  const done = ease.outBack(prog(t, MATCH_AT, MATCH_AT + 0.4));
+  const matched = MATCH_AT + HOW_SHIFT;
+  const st = presence(t, HEADER_IN + 0.3, 0.4);
+  const done = ease.outBack(prog(t, matched, matched + 0.4));
   put(status, { o: st.v, x: xP + promptW[LAST] + 16, y: MID - 32, s: lerp(0.5, 1, st.a) });
-  put(spinner, { o: 1 - prog(t, MATCH_AT, MATCH_AT + 0.15), raw: `rotate(${(t * 400) % 360}deg)` });
+  put(spinner, { o: 1 - prog(t, matched, matched + 0.15), raw: `rotate(${(t * 400) % 360}deg)` });
   put(check, { o: clamp(done * 1.4), s: lerp(0.4, 1, done) });
 
-  // ---- the whole line rises into the header, and leaves with "how it works" ----
-  const up = ease.inOut(prog(t, 12.86, 13.46));
-  const out = presence(t, 0, 0, 28.38, 0.42);
-  put(line, {
-    o: out.v,
-    x: (W / 2 - L.lineCx) * up,
-    y: (HEADER_Y - MID) * up + out.b * -16,
-    s: lerp(1, HEADER_S, up),
-    blur: out.b * 10,
-  });
+  // ---- the line dives into the screen as the clones come in, and comes back as the header ----
+  if (t < HEADER_IN - 1) {
+    const gone = ease.inOutCubic(prog(t, 6.0, 6.3));
+    put(line, { o: 1 - gone, s: 1 + 0.12 * gone, blur: 14 * gone });
+  } else {
+    const h = presence(t, HEADER_IN, 0.55, HEADER_OUT, 0.42);
+    put(line, { o: h.v, x: W / 2 - L.lineCx, y: HEADER_Y - MID + (1 - h.a) * 14 - h.b * 16, s: HEADER_S, blur: 10 * Math.max(1 - h.a, h.b) });
+  }
   setStyle(line, "transform-origin", `${L.lineCx.toFixed(1)}px ${MID}px`);
 
-  blurFade(caption, t, { inAt: 4.7, inDur: 0.6, outAt: 12.86, outDur: 0.35, dy: 14, blur: 10 });
+  blurFade(caption, t, { inAt: 2.2, inDur: 0.5, outAt: 5.85, outDur: 0.3, dy: 14, blur: 10 });
 }

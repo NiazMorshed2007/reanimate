@@ -1,19 +1,21 @@
-// Every clone at once: a mosaic of the clips in three staggered rows of six, which unravels into one ribbon
-// of playing frames wound into a helix at bar 18, then the camera pulls back for a few seconds as it turns.
-// The mosaic's tiles become the middle of the ribbon. Tiles turned away are flipped (they are edge-on
-// when it happens) so no frame is ever mirrored.
+// Every clone at once. It opens on the Resend cube filling the screen, the last of the showcase; it is a
+// tile of a mosaic of all 18 clips (three staggered rows of six), and at bar 5.5 the camera pulls back to
+// show the rest. At bar 6.5 the mosaic unravels into one ribbon of playing frames wound into a helix, which
+// turns for a few seconds while the camera pulls back further. The mosaic's tiles become the middle of the
+// ribbon. Tiles turned away are flipped (they are edge-on when it happens) so no frame is ever mirrored.
 import { bar, clipInfo, clipLen, ease, el, frameUrl, hash, lerp, prog, put, setSrc, setStyle } from "./lib.js";
+import { CUBE_AT } from "./showcase.js";
 
 export const name = "helix";
-export const from = 47.2;
-export const to = 57.1;
+export const from = CUBE_AT - 0.15;
 
-// in the mosaic's reading order
+// in the mosaic's reading order; the cube is near the middle, where the camera starts
 const EXAMPLES = [
-  "stripe-agentic-commerce", "stripe-issuing", "resend-cube", "stripe-crypto", "workos-atlas", "clerk-session-management",
-  "clerk-fraud", "clerk-magic-links", "reactbits-fading-stars", "clerk-mfa", "liveblocks-comments", "clerk-otp",
+  "stripe-agentic-commerce", "stripe-issuing", "reactbits-fading-stars", "stripe-crypto", "workos-atlas", "clerk-session-management",
+  "clerk-fraud", "clerk-magic-links", "resend-cube", "clerk-mfa", "liveblocks-comments", "clerk-otp",
   "clerk-social-sign-on", "clerk-bot-detection", "clerk-advanced-security", "clerk-passwords", "clerk-api-keys", "clerk-cli",
 ];
+const CUBE = EXAMPLES.indexOf("resend-cube");
 const LIGHT = new Set(["stripe-agentic-commerce", "stripe-issuing", "stripe-crypto", "workos-atlas"]); // on white; the rest are dark
 // where to crop each recording into a 4:3 tile: the card's margin in the recording, and the focus point
 const CROP = {
@@ -45,14 +47,16 @@ const CELLS = [0, 1, 2].flatMap((r) =>
 const D0 = P / 0.8 - P + R;
 const D1 = 2150;
 
-const IN = bar(17) - 0.17; // the mosaic flies in as the last examples leave
-const MORPH = [bar(18) - 0.05, bar(18) + 1.45]; // 50.12 → 51.62
-const PULLED = MORPH[1] + 2.4; // the camera has pulled back
-const FADE = bar(20); // the helix gives way to the install card
+const ZOOM = [bar(5.5) - 0.05, bar(5.5) + 1.3]; // the camera pulls back from the cube to the whole mosaic
+const Z0 = 940 / (TH * MS); // how close it starts: the cube's tile as tall as the showcase's clips
+const MORPH = [bar(6.5) - 0.05, bar(6.5) + 1.45]; // 19.45 → 20.95
+const PULLED = MORPH[1] + 1.4; // the camera has pulled back from the helix
+const FADE = bar(7.75); // the helix gives way to "how it works"
+export const to = FADE + 1.5;
 
 // helix tile for each mosaic cell: the middle of the ribbon, the light ones spread out along it and the
 // Resend cube in front when it lands
-const RIBBON = [6, 7, 0, 8, 12, 1, 13, 10, 14, 2, 15, 3, 11, 16, 9, 4, 17, 5]; // EXAMPLES indices, in ribbon order
+const RIBBON = [6, 7, 0, 2, 12, 1, 13, 10, 14, 8, 15, 3, 11, 16, 9, 4, 17, 5]; // EXAMPLES indices, in ribbon order
 const HALF = Math.floor(EXAMPLES.length / 2);
 const cellTile = (k) => MID - HALF + RIBBON.indexOf(k);
 
@@ -108,6 +112,7 @@ export function init(r) {
   });
   tiles.forEach((tile) => (tile._cell = null));
   CELLS.forEach((cell, k) => (tiles[cellTile(k)]._cell = cell));
+  tiles[cellTile(CUBE)]._cube = true;
 }
 
 export function render(t) {
@@ -123,7 +128,21 @@ export function render(t) {
   const fade = ease.inOutCubic(prog(t, FADE - 0.4, FADE + 1.4));
   const tq = Math.floor(t * 30) / 30; // tiles play at 30 fps
 
-  put(world, { o: 1 - fade, blur: fade * 14, s: lerp(1, 0.9, fade), rz: lean });
+  // the camera: in on the cube (the cube's cell in the middle of the screen), then back to the whole
+  // mosaic, zooming evenly; the cube cuts in like the showcase's clips
+  const pull = ease.inOut(prog(t, ...ZOOM));
+  const cam = Z0 ** (1 - pull);
+  const cube = CELLS[CUBE];
+  const enter = ease.expo(prog(t, CUBE_AT - 0.06, CUBE_AT + 0.4));
+  const push = 1 + 0.025 * prog(t, CUBE_AT, ZOOM[0]);
+  put(world, {
+    o: enter * (1 - fade),
+    blur: (1 - enter) * 14 + fade * 14,
+    x: -(cube.x - 960) * cam * (1 - pull),
+    y: -(cube.y - 540) * cam * (1 - pull),
+    s: cam * lerp(1.07, 1, enter) * lerp(push, 1, pull) * lerp(1, 0.9, fade),
+    rz: lean,
+  });
 
   for (let i = 0; i < N; i++) {
     const tile = tiles[i];
@@ -146,20 +165,17 @@ export function render(t) {
     const helixO = 0.05 + 0.95 * front ** 2.2;
     const helixBlur = (1 - front) ** 1.5 * 8;
     if (tile._cell) {
-      // a mosaic cell: flies in, plays, then curls onto the helix
-      const { r, x: cx, y: cy } = tile._cell;
-      const gx = cx - 960, gy = cy - 540;
-      const d = Math.hypot((cx - 960) / (TW * MS + GAP), r - 1);
-      const a = ease.expo(prog(t, IN + d * 0.06, IN + 0.75 + d * 0.06));
-      const settle = 1 - 0.035 * ease.inOutSine(prog(t, IN + 0.7, MORPH[0]));
-      const gz = (1 - a) * 900 - (1 - settle) * 400;
-      x = lerp(gx, X, morph);
-      y = lerp(gy, Y, morph);
-      z = lerp(gz, Z, morph);
+      // a mosaic cell: the cube is there from the start, the others show up as the camera pulls back;
+      // then it curls onto the helix
+      const { x: cx, y: cy } = tile._cell;
+      const a = tile._cube ? 1 : ease.outCubic(prog(t, ZOOM[0] + 0.05, ZOOM[0] + 0.55));
+      x = lerp(cx - 960, X, morph);
+      y = lerp(cy - 540, Y, morph);
+      z = lerp(0, Z, morph);
       rx = tilt * morph;
       ry = yaw * morph;
       o = lerp(a, helixO, morph);
-      blur = lerp((1 - a) * 18, helixBlur, morph);
+      blur = helixBlur * morph;
       sc = lerp(MS, 1, morph);
     } else {
       const a = ease.expo(prog(t, MORPH[0] + 0.25 + hash(i) * 0.9, MORPH[0] + 1.1 + hash(i) * 0.9));
@@ -171,7 +187,9 @@ export function render(t) {
       put(tile, { o: 0 });
       continue;
     }
-    setSrc(tile._img, frameUrl(tile._slug, tile._off + (tq - IN) * 0.9, { small: true, loop: true }));
+    // the cube is seen up close, so it plays its full-size frames from its own start
+    if (tile._cube) setSrc(tile._img, frameUrl(tile._slug, t - CUBE_AT, { loop: true }));
+    else setSrc(tile._img, frameUrl(tile._slug, tile._off + (tq - CUBE_AT) * 0.9, { small: true, loop: true }));
     put(tile, { o, x, y, z, rx, ry, s: sc, blur });
     setStyle(tile, "z-index", String(Math.round(z + 20000)));
   }

@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://reanimate.niazmorshed.dev/demo.mp4"><img src=".github/assets/demo.webp" width="760" alt="Moments from the demo video: /reanimate slides in; three browsers record widgets on stripe.com, resend.com and clerk.com; the copies are measured against them until the difference is gone; the 18 examples turn on a helix; the install command types itself in."></a>
 </p>
-<p align="center"><sub>A one-minute demo. <a href="https://reanimate.niazmorshed.dev/demo.mp4">Watch it with sound</a>.</sub></p>
+<p align="center"><sub>A short demo. <a href="https://reanimate.niazmorshed.dev/demo.mp4">Watch the full video</a>.</sub></p>
 
 A lot of good ideas start on someone else's site. Ask an agent to rebuild one from a link or a screenshot and it makes one pass, calls it done, and misses. It can't see the motion or tell how far off it is.
 

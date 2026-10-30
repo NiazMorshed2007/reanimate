@@ -8,7 +8,7 @@
   <link rel="preload" href="assets/fonts/Inter-opsz.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/JetBrainsMono.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="src/demo.css">
-  <!-- ?render: the bare 1920x1080 stage for scripts/render.ts. Otherwise a player with the soundtrack:
+  <!-- ?render: the bare 1920x1080 stage for scripts/render.ts. Otherwise a player:
        space plays and pauses, ←/→ step a frame (shift: a second), ?t=12.5 starts there. -->
   <script>if (new URLSearchParams(location.search).has("render")) document.documentElement.dataset.render = "";</script>
   <script type="module" src="src/main.js"></script>
@@ -18,8 +18,7 @@
   <div id="player">
     <button type="button" id="play" aria-label="Play">Play</button>
     <span id="time">0.00</span>
-    <input id="scrub" type="range" min="0" max="64.166" step="0.001" value="0" aria-label="Time">
-    <audio id="audio" src="assets/soundtrack.mp3" preload="auto"></audio>
+    <input id="scrub" type="range" min="0" max="47.5" step="0.001" value="0" aria-label="Time">
   </div>
 </body>
 </html>
