@@ -23,6 +23,18 @@ bun video/scripts/publish.ts   # public/demo.mp4 for the site, and the README's 
 
 `render.ts` options: `--scale 2` draws at 3840x2160 and scales down (sharper, about 4x slower); `--size 3840x2160` keeps it; `--from 12 --to 29` renders a section; `--stills 1.5,13.2` writes PNGs of single moments to `video/out/stills/`. It needs Playwright's Chromium and `ffmpeg` on PATH. `publish.ts` makes a smaller copy that the site serves at `/demo.mp4` (the README links to it), and the README's preview: a few moments of the video, cross-faded into a 20-second loop. It needs `ffmpeg`, `cwebp` and `webpmux`.
 
+## The Vercel video
+
+`vercel.html` is a second video on the same stage and renderer: 37.6 s of the six Vercel clones (vercel.com, nextjs.org, turborepo.com), each next to its original, then all six at once and the install command. Its scenes are in `src/vercel/`; `shots.js` lists the shots, their timing and their numbers. The pairs are the site's own recordings, kept lined up by `record-media`:
+
+```sh
+bun run media --only vercel-previews,vercel-hero,vercel-fluid,vercel-workflow,turborepo-gauge,nextjs-rsc --keep <dir>
+bun video/scripts/clips.ts --masters <dir>        # each as <slug>-reference and <slug>-copy
+bun video/scripts/render.ts --page vercel.html     # video/out/vercel.mp4
+```
+
+The player is at `/video/vercel.html` on `serve.ts`.
+
 ## Edit it
 
 ```sh

@@ -3,6 +3,7 @@
 // (full size), t/NNNN.jpg (small, for the helix) and video/clips/manifest.json.
 //
 //   bun video/scripts/clips.ts [--only clerk-mfa,…] [--jobs 4]
+//   bun video/scripts/clips.ts --masters <dir> [--only vercel-hero,…]   # the Vercel video's pairs (below)
 //
 // Also, for the "how it works" scene: films clerk.com's Session management card and its copy the same way,
 // and cuts the stripe.com Agentic commerce card and the resend.com cube, each with its copy, out of their
@@ -13,7 +14,7 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { SITE, serve } from "./serve";
 
-const { values: args } = parseArgs({ options: { only: { type: "string" }, jobs: { type: "string", default: "4" }, port: { type: "string", default: "4701" } } });
+const { values: args } = parseArgs({ options: { only: { type: "string" }, jobs: { type: "string", default: "4" }, port: { type: "string", default: "4701" }, masters: { type: "string" } } });
 
 const CAPTURE = join(SITE, "..", "skills", "reanimate", "scripts", "capture.ts");
 const OUT = join(SITE, "video", "clips");
@@ -73,7 +74,7 @@ const CLIPS: Clip[] = [
 ];
 
 const only = args.only?.split(",");
-const todo = CLIPS.filter((c) => !only || only.includes(c.slug));
+const todo = args.masters ? [] : CLIPS.filter((c) => !only || only.includes(c.slug));
 
 function run(cmd: string, argv: string[]) {
   const r = spawnSync(cmd, argv, { maxBuffer: 1 << 30 });
@@ -132,6 +133,28 @@ const cutCompares = () => ({
   ...cutCompare("resend-cube", "how-resend"),
 });
 
+// For the Vercel video (vercel.html): each clone and its original as scripts/record-media.ts filmed them for
+// the site, lined up the same way, cut from the takes it keeps with `--keep <dir>` (listed in masters.json
+// there) into <slug>-reference and <slug>-copy, at 2x.
+function cutMasters(dir: string) {
+  type Take = { file: string; from: number };
+  const masters: Record<string, { ms: number; reference: Take; clone: Take }> = JSON.parse(readFileSync(join(dir, "masters.json"), "utf8"));
+  const out: Record<string, object> = {};
+  for (const [slug, m] of Object.entries(masters)) {
+    if (only && !only.includes(slug)) continue;
+    for (const [side, take] of [["reference", m.reference], ["copy", m.clone]] as const) {
+      const name = `${slug}-${side}`;
+      rmSync(join(OUT, name), { recursive: true, force: true });
+      mkdirSync(join(OUT, name, "f"), { recursive: true });
+      run("ffmpeg", ["-v", "error", "-y", "-ss", (take.from / 1000).toFixed(3), "-t", (m.ms / 1000).toFixed(3), "-i", take.file, "-q:v", "2", join(OUT, name, "f", "%04d.jpg")]);
+      const [w, h] = run("ffprobe", ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0", take.file]).trim().split(",").map(Number);
+      out[name] = { slug: name, fps: FPS, frames: readdirSync(join(OUT, name, "f")).length, width: w / 2, height: h / 2 };
+      console.log(`${name}: ${(out[name] as { frames: number }).frames} frames`);
+    }
+  }
+  return out;
+}
+
 const server = await serve(Number(args.port));
 const origin = `http://localhost:${args.port}`;
 const manifestFile = join(OUT, "manifest.json");
@@ -150,7 +173,8 @@ await Promise.all(
     }
   }),
 );
-if (!only || only.some((s) => s.startsWith("compare"))) Object.assign(manifest, cutCompares());
+if (args.masters) Object.assign(manifest, cutMasters(args.masters));
+else if (!only || only.some((s) => s.startsWith("compare"))) Object.assign(manifest, cutCompares());
 writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + "\n");
 server.closeAllConnections();
 server.close();

@@ -3,6 +3,7 @@ The fonts here are licensed under the SIL Open Font License, Version 1.1, copied
 - Inter-opsz.woff2: Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)
 - JetBrainsMono.woff2: Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
 - InstrumentSerif-Italic.woff2: Copyright 2022 The Instrument Serif Project Authors (https://github.com/Instrument/instrument-serif)
+- Geist-Variable.woff2, GeistMono-Variable.woff2: Copyright (c) 2023 Vercel, in collaboration with basement.studio (https://github.com/vercel/geist-font)
 
 -----------------------------------------------------------
 SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
