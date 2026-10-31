@@ -10,7 +10,7 @@
 // Needs Playwright's Chromium (bunx playwright install chromium), ffmpeg, cwebp and webpmux on PATH.
 import { chromium, type Browser } from "playwright";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
@@ -20,12 +20,36 @@ type Clip = {
   reference: string;
   clone: string; // path on the local site
   select: string[]; // what to film: the crop is these elements' union plus PAD, on both pages
-  trigger: "scroll" | "hover"; // scroll: the entrance as they scroll into view; hover: HOVER_PATH over the first
+  trigger: "scroll" | "hover" | "drop"; // scroll: the entrance as they scroll into view; hover: HOVER_PATH over the first; drop: DROP_POINTER_PATH, then a file dragged over the first (DROP_PATH)
+  path?: [number, number, number][]; // hover: this pointer path instead of HOVER_PATH (same format)
+  ms?: number; // hover: how long to film, instead of HOVER_MS
+  still?: boolean; // the page rests between pointer moves: the speck keeps repainting while filming, so frames come at 60 fps
   pin?: number; // Math.random returns this from just before the trigger, so random picks come out the same on both pages
   sync?: boolean; // the motion is a loop each page starts when its scene is ready, not on the trigger: line the takes up by their frames
 };
 
 const bento = (card: string) => `.modular-solutions-bento__card-${card}`;
+// In from the left over each group of the Vercel Toolbar in turn (comments, feature flags, CMS drafts,
+// collaborators, accessibility, layout shift, share), then out to the right. Fractions of the toolbar's box.
+const VERCEL_TOOLBAR_PATH: [number, number, number][] = [
+  [0, -0.25, 0.5],
+  [300, -0.25, 0.5],
+  [650, 0.115, 0.5],
+  [1200, 0.115, 0.5],
+  [1450, 0.285, 0.5],
+  [2000, 0.285, 0.5],
+  [2200, 0.379, 0.5],
+  [2750, 0.379, 0.5],
+  [3050, 0.562, 0.5],
+  [3600, 0.562, 0.5],
+  [3900, 0.744, 0.5],
+  [4450, 0.744, 0.5],
+  [4650, 0.838, 0.5],
+  [5200, 0.838, 0.5],
+  [5400, 0.932, 0.5],
+  [5950, 0.932, 0.5],
+  [6400, 1.25, 0.5],
+];
 const CLIPS: Clip[] = [
   { slug: "stripe-bento", reference: "https://stripe.com/", clone: "/examples/stripe-bento/", select: ["agentic-commerce", "issuing", "crypto"].map(bento), trigger: "scroll" },
   { slug: "stripe-agentic-commerce", reference: "https://stripe.com/", clone: "/examples/stripe-bento/", select: [bento("agentic-commerce")], trigger: "hover" },
@@ -34,8 +58,20 @@ const CLIPS: Clip[] = [
   { slug: "workos-atlas", reference: "https://workos.com/atlas", clone: "/examples/workos-atlas/", select: ['[aria-label^="Atlas reaching out"]'], trigger: "scroll", pin: 0.37 },
   { slug: "liveblocks-comments", reference: "https://liveblocks.io/comments", clone: "/examples/liveblocks-comments/", select: ['.select-none[class*="aspect-1208/770"]'], trigger: "scroll", sync: true },
   { slug: "resend-cube", reference: "https://resend.com/", clone: "/examples/resend-cube/", select: [".animate-webgl-scale-in-fade"], trigger: "scroll", sync: true },
+  // the toolbar comes first: the pointer path is in its box; the outermost tags set the crop
+  { slug: "vercel-previews", reference: "https://vercel.com/products/previews", clone: "/examples/vercel-previews/", select: ['[aria-label^="This element represents the full suite"]', '[data-side="top"] > [data-color="blue"]', '[data-side="top"] > [data-color="purple"]', '[data-side="top"] > [data-color="pink"]', '[data-side="bottom"] > [data-color="amber"]'], trigger: "hover", path: VERCEL_TOOLBAR_PATH, ms: 7400, still: true },
   // the preview is an iframe on the original; one selector list finds it there and the copy's canvas here
   { slug: "reactbits-fading-stars", reference: "https://pro.reactbits.dev/docs/components/fading-stars?browse=components", clone: "/examples/reactbits-fading-stars/", select: ['iframe[title="Preview"], .fading-stars'], trigger: "hover" },
+  { slug: "vercel-hero", reference: "https://vercel.com/", clone: "/examples/vercel-hero/", select: ["[data-triangle-led-4-hero-canvas]"], trigger: "drop" },
+  // the sea runs from page load on both pages and never repeats; the same frame gives the same pixels, so sync lines the takes up
+  { slug: "vercel-fluid", reference: "https://vercel.com/fluid", clone: "/examples/vercel-fluid/", select: ["[data-ocean-hero] ~ div .grid-cols-12"], trigger: "scroll", sync: true },
+  // a run plays once on scroll-in; its first changes are too faint for contentAppears, so sync lines the takes up by their frames
+  { slug: "vercel-workflow", reference: "https://vercel.com/workflow", clone: "/examples/vercel-workflow/", select: ['[aria-label^="Vercel dashboard preview"]'], trigger: "scroll", sync: true, still: true },
+  { slug: "turborepo-gauge", reference: "https://turborepo.com/", clone: "/examples/turborepo-gauge/", select: ['svg[viewBox="0 0 480 340"]'], trigger: "hover", still: true },
+  // nextjs.org's cards: the first lights up under the pointer; the other two loop from scroll-in, too faintly for contentAppears
+  { slug: "nextjs-optimizations", reference: "https://nextjs.org/", clone: "/examples/nextjs-features/", select: ['a[href$="/getting-started/images"]'], trigger: "hover", still: true },
+  { slug: "nextjs-streaming", reference: "https://nextjs.org/", clone: "/examples/nextjs-features/", select: ['a[href$="/fetching-data#streaming"]'], trigger: "scroll", sync: true },
+  { slug: "nextjs-rsc", reference: "https://nextjs.org/", clone: "/examples/nextjs-features/", select: ['a[href$="/server-and-client-components"]'], trigger: "scroll", sync: true },
 ];
 
 const { values: args } = parseArgs({
@@ -73,6 +109,29 @@ const HOVER_PATH: [number, number, number][] = [
   [3350, 0.7, 0.7],
   [3700, 1.12, 0.82],
 ];
+// The drop clip: the pointer passes close to the element first (beside the left edge of vercel.com's
+// triangle, over its top, beside its right corner, out below), then a file is dragged in from outside
+// the window: dragenter, dragover every 50 ms along DROP_PATH, dragleave at its end. Never dropped, so
+// vercel.com does not start a deploy. Fractions of the element's box and ms, as in HOVER_PATH.
+const DROP_POINTER_PATH: [number, number, number][] = [
+  [0, -0.04, 0.52],
+  [300, -0.04, 0.52],
+  [800, 0.37, 0.56],
+  [1500, 0.37, 0.56],
+  [2000, 0.5, 0.3],
+  [2600, 0.5, 0.3],
+  [3100, 0.66, 0.62],
+  [3600, 0.66, 0.62],
+  [4000, 0.62, 1.1],
+];
+const DROP_PATH: [number, number, number][] = [
+  [4300, 0.24, 0.82],
+  [5000, 0.44, 0.52],
+  [5700, 0.44, 0.52],
+  [6400, 0.6, 0.58],
+  [7300, 0.6, 0.58],
+];
+const DROP_MS = 8300;
 
 // A visible pointer, so viewers can see what the hover clips react to. Drawn in the page, ignored by
 // hit testing, identical on both sites.
@@ -81,7 +140,14 @@ const CURSOR = `addEventListener("DOMContentLoaded", () => {
   el.innerHTML = '<svg width="22" height="28" viewBox="0 0 22 28" xmlns="http://www.w3.org/2000/svg"><path d="M2 2v20.5l5.4-5.2 3.6 8.4 3.5-1.5-3.6-8.3H18z" fill="#0a0a0a" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>';
   el.style.cssText = "position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none;display:none;filter:drop-shadow(0 1px 2px rgb(0 0 0 / .3))";
   document.documentElement.append(el);
-  addEventListener("mousemove", (e) => { el.style.display = "block"; el.style.transform = "translate(" + (e.clientX - 2) + "px," + (e.clientY - 2) + "px)"; }, { capture: true, passive: true });
+  const move = (e) => { el.style.display = "block"; el.style.transform = "translate(" + (e.clientX - 2) + "px," + (e.clientY - 2) + "px)"; };
+  addEventListener("mousemove", move, { capture: true, passive: true });
+  // a dragged file: the pointer with a document under it, following dragover
+  const file = el.appendChild(document.createElement("div"));
+  file.innerHTML = '<svg width="22" height="28" viewBox="0 0 22 28" xmlns="http://www.w3.org/2000/svg"><path d="M1.5 1.5h12l7 7v18h-19z" fill="#fff" stroke="#8f8f8f" stroke-width="1.4" stroke-linejoin="round"/><path d="M13.5 1.5v7h7" fill="none" stroke="#8f8f8f" stroke-width="1.4" stroke-linejoin="round"/></svg>';
+  file.style.cssText = "position:absolute;left:12px;top:18px;display:none";
+  addEventListener("dragover", (e) => { file.style.display = "block"; move(e); }, { capture: true, passive: true });
+  addEventListener("dragleave", () => { file.style.display = "none"; el.style.display = "none"; }, { capture: true, passive: true });
 });`;
 
 // Example pages hold little more than the clone itself; pad them so it starts below the fold and
@@ -134,14 +200,17 @@ async function film(browser: Browser, clip: Clip, side: Side): Promise<Take> {
   const right = Math.max(...boxes.map((b) => b.x + b.width));
   const top = Math.min(...boxes.map((b) => b.y));
   const bottom = Math.max(...boxes.map((b) => b.y + b.height));
-  const crop = { x: left - PAD, y: TOP - PAD, width: right - left + 2 * PAD, height: bottom - top + 2 * PAD };
-  const scrollY = top - TOP;
+  // An element that can't be scrolled to TOP (a hero less than TOP from the top of the page, like vercel.com's,
+  // or one near the bottom) stays where the page lets it be: the crop and the pointer follow the element.
+  const maxScroll = await page.evaluate(() => document.documentElement.scrollHeight - innerHeight);
+  const scrollY = Math.min(Math.max(0, maxScroll), Math.max(0, top - TOP));
+  const crop = { x: left - PAD, y: top - scrollY - PAD, width: right - left + 2 * PAD, height: bottom - top + 2 * PAD };
   const scrollIn = () => page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), scrollY);
   // Pinned after load: the pages' other code calls Math.random a different number of times, so a seed
   // would not line the picks up.
   if (clip.pin !== undefined) await page.evaluate((v) => (Math.random = () => v), clip.pin);
 
-  if (clip.trigger === "hover") {
+  if (clip.trigger === "hover" || clip.trigger === "drop") {
     await scrollIn();
     await sleep(6000); // let the entrance finish
   }
@@ -181,11 +250,11 @@ async function film(browser: Browser, clip: Clip, side: Side): Promise<Take> {
     tick();
   });
   for (let i = 0; wide < 5; i++) {
-    if (i === 20) throw new Error(`${clip.slug} ${side}: the window would not zoom (frame widths: ${seen.slice(-12).join(" ") || "none"})`);
+    if (i === 60) throw new Error(`${clip.slug} ${side}: the window would not zoom (frame widths: ${seen.slice(-12).join(" ") || "none"})`);
     await zoom();
     await sleep(250);
   }
-  await page.evaluate(() => document.getElementById("record-media-tick")?.remove());
+  if (!clip.still) await page.evaluate(() => document.getElementById("record-media-tick")?.remove());
   recording = true;
   await sleep(300);
 
@@ -201,23 +270,61 @@ async function film(browser: Browser, clip: Clip, side: Side): Promise<Take> {
     // Mouse input lands in the zoomed window's coordinates, so CSS px are scaled up to match.
     const box = boxes[0];
     const at = (fx: number, fy: number) => ({ x: (box.x + box.width * fx) * SCALE, y: (box.y - scrollY + box.height * fy) * SCALE });
-    const p0 = at(HOVER_PATH[0][1], HOVER_PATH[0][2]);
-    await page.mouse.move(p0.x, p0.y);
-    start = Date.now();
-    ms = HOVER_MS;
-    for (;;) {
-      const t = Date.now() - start;
-      const i = HOVER_PATH.findIndex(([when]) => when > t);
-      if (i < 0) break;
-      const [t0, x0, y0] = HOVER_PATH[i - 1];
-      const [t1, x1, y1] = HOVER_PATH[i];
+    const glide = (path: [number, number, number][], t: number) => {
+      const i = path.findIndex(([when]) => when > t);
+      if (i <= 0) return null;
+      const [t0, x0, y0] = path[i - 1];
+      const [t1, x1, y1] = path[i];
       const k = (t - t0) / (t1 - t0);
       const e = k * k * (3 - 2 * k); // smoothstep: the pointer speeds up and settles like a hand
-      const p = at(x0 + (x1 - x0) * e, y0 + (y1 - y0) * e);
-      await page.mouse.move(p.x, p.y);
+      return [x0 + (x1 - x0) * e, y0 + (y1 - y0) * e];
+    };
+    // Drag events are dispatched in the page, in CSS px, with a File in their DataTransfer.
+    const drag = (type: string, fx: number, fy: number) =>
+      page.evaluate(
+        ({ type, x, y }) => {
+          const w = window as typeof window & { __recordMediaFile?: DataTransfer };
+          if (!w.__recordMediaFile) {
+            w.__recordMediaFile = new DataTransfer();
+            w.__recordMediaFile.items.add(new File(["x"], "site.zip", { type: "application/zip" }));
+          }
+          (document.elementFromPoint(x, y) ?? document.body).dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y, dataTransfer: w.__recordMediaFile }));
+        },
+        { type, x: box.x + box.width * fx, y: box.y - scrollY + box.height * fy },
+      );
+    const path = clip.trigger === "drop" ? DROP_POINTER_PATH : clip.path ?? HOVER_PATH;
+    const p0 = at(path[0][1], path[0][2]);
+    await page.mouse.move(p0.x, p0.y);
+    start = Date.now();
+    ms = clip.trigger === "drop" ? DROP_MS : clip.ms ?? HOVER_MS;
+    let dragging: "before" | "on" | "done" = clip.trigger === "drop" ? "before" : "done";
+    let lastOver = -Infinity;
+    for (;;) {
+      const t = Date.now() - start;
+      const p = glide(path, t);
+      if (p) {
+        const q = at(p[0], p[1]);
+        await page.mouse.move(q.x, q.y);
+      }
+      const [first, last] = [DROP_PATH[0], DROP_PATH.at(-1)!];
+      if (dragging === "before" && t >= first[0]) {
+        await drag("dragenter", first[1], first[2]);
+        dragging = "on";
+      }
+      if (dragging === "on") {
+        if (t >= last[0]) {
+          await drag("dragleave", last[1], last[2]);
+          dragging = "done";
+        } else if (t - lastOver >= 50) {
+          const q = glide(DROP_PATH, t) ?? [first[1], first[2]];
+          await drag("dragover", q[0], q[1]);
+          lastOver = t;
+        }
+      }
+      if (!p && dragging === "done") break;
       await sleep(8);
     }
-    await sleep(HOVER_MS - (Date.now() - start) + 500);
+    await sleep(ms - (Date.now() - start) + 500);
   }
   await cdp.send("Page.stopScreencast");
   await context.close();
@@ -374,7 +481,7 @@ for (const clip of CLIPS) {
     takes[side] = { file, appear: clip.trigger === "scroll" && !clip.sync ? contentAppears(file) : 0 };
   }
   const lead = Math.min(ENTRANCE_LEAD_MS, ...SIDES.map((s) => takes[s].appear));
-  const ms = clip.trigger === "scroll" ? ENTRANCE_MS : HOVER_MS;
+  const ms = clip.trigger === "scroll" ? ENTRANCE_MS : clip.trigger === "drop" ? DROP_MS : clip.ms ?? HOVER_MS;
   for (const side of SIDES) masters[`${clip.slug}-${side}`] = { file: takes[side].file, from: takes[side].appear - lead };
   if (clip.sync) {
     // start the take that runs behind later, by as much as it runs behind
@@ -384,7 +491,15 @@ for (const clip of CLIPS) {
     console.log(`${clip.slug}: the original's loop runs ${behind.toFixed(0)} ms behind the copy's`);
   }
   compareMp4(SIDES.map((side) => masters[`${clip.slug}-${side}`]), ms, join(out, "compare.mp4"));
-  // At rest: the end of an entrance, the start of a hover.
+  // With --keep: the takes, lined up as in compare.mp4, for other uses (video/scripts/clips.ts --masters cuts
+  // the Vercel video's pairs from them), added to what earlier runs into the same folder kept.
+  if (args.keep) {
+    const file = join(WORK, "masters.json");
+    const kept = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {};
+    kept[clip.slug] = { ms, reference: masters[`${clip.slug}-reference`], clone: masters[`${clip.slug}-clone`] };
+    writeFileSync(file, JSON.stringify(kept, null, 2) + "\n");
+  }
+  // At rest: the end of an entrance, the start of a hover or a drop.
   const cloneFrom = masters[`${clip.slug}-clone`].from;
   poster(takes.clone.file, clip.trigger === "scroll" ? cloneFrom + ms - 100 : cloneFrom, join(out, "poster.webp"));
 }

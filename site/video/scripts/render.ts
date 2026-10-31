@@ -1,10 +1,11 @@
 // Renders the demo video: every frame of video/index.html?render is drawn from its time alone, screenshotted
-// in headless Chromium and piped to ffmpeg, in parallel slices, then joined and laid over the soundtrack.
+// in headless Chromium and piped to ffmpeg, in parallel slices, then joined. There's no sound.
 //
 //   bun video/scripts/render.ts                       # video/out/reanimate-demo.mp4, 1920x1080, 60 fps
 //   bun video/scripts/render.ts --scale 2             # drawn at 3840x2160 (sharper), written at --size
 //   bun video/scripts/render.ts --stills 1.5,12.9     # just those moments, as PNGs in video/out/stills/
 //   bun video/scripts/render.ts --from 12 --to 20     # a section, without the full-length join
+//   bun video/scripts/render.ts --page vercel.html    # another video page: video/out/vercel.mp4
 //
 // Needs the clips (bun video/scripts/clips.ts), ffmpeg on PATH and Playwright's Chromium.
 import { chromium, type Browser, type CDPSession, type Page } from "playwright";
@@ -28,6 +29,7 @@ const { values: args } = parseArgs({
     out: { type: "string" },
     crf: { type: "string", default: "14" },
     port: { type: "string", default: "4702" },
+    page: { type: "string", default: "index.html" },
   },
 });
 
@@ -38,7 +40,8 @@ mkdirSync(OUT, { recursive: true });
 
 const PORT = Number(args.port);
 const server = await serve(PORT);
-const url = `http://localhost:${PORT}/video/?render`;
+const url = `http://localhost:${PORT}/video/${args.page}?render`;
+const NAME = args.page === "index.html" ? "reanimate-demo" : args.page!.replace(/\.html$/, "");
 const stop = () => (server.closeAllConnections(), server.close());
 
 async function open(browser: Browser): Promise<{ page: Page; cdp: CDPSession; info: { duration: number; fps: number } }> {
@@ -129,14 +132,9 @@ stop();
 
 const list = join(parts, "list.txt");
 writeFileSync(list, files.filter(Boolean).map((f) => `file '${f}'`).join("\n"));
-const name = args.out ?? (first === 0 && last === total ? "reanimate-demo.mp4" : `section-${(first / info.fps).toFixed(1)}-${(last / info.fps).toFixed(1)}.mp4`);
+const name = args.out ?? (first === 0 && last === total ? `${NAME}.mp4` : `${args.page === "index.html" ? "" : `${NAME}-`}section-${(first / info.fps).toFixed(1)}-${(last / info.fps).toFixed(1)}.mp4`);
 const dest = join(OUT, name);
-const audio = join(SITE, "video", "assets", "soundtrack.mp3");
-const r = spawnSync("ffmpeg", [
-  "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", list,
-  "-ss", String(first / info.fps), "-t", String((last - first) / info.fps), "-i", audio,
-  "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "256k", "-movflags", "+faststart", "-shortest", dest,
-], { stdio: "inherit" });
+const r = spawnSync("ffmpeg", ["-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", list, "-c", "copy", "-movflags", "+faststart", dest], { stdio: "inherit" });
 if (r.status !== 0) throw new Error("ffmpeg join failed");
 rmSync(parts, { recursive: true, force: true });
 console.log(`wrote ${dest} in ${((Date.now() - started) / 1000).toFixed(0)} s`);

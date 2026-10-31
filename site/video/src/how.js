@@ -6,10 +6,12 @@
 //   build   code types itself in; the copies appear in a preview
 //   verify  the preview slides next to the originals, all replay, a scan line measures them
 //   repeat  a third panel shows the real pixel difference; each round it shrinks, then a match
-import { ACCENT, INK, MUTED, bar, blurFade, clamp, ease, el, frameUrl, lerp, mix, presence, prog, put, setSrc, setStyle, tw } from "./lib.js";
+import { ACCENT, HOW_SHIFT, INK, MUTED, bar, blurFade, clamp, ease, el, frameUrl, lerp, mix, presence, prog, put, setSrc, setStyle, tw } from "./lib.js";
 import { MATCH_AT } from "./intro.js";
 
+// The times below are this scene's own: it plays HOW_SHIFT later, after the clones (main.js).
 export const name = "how";
+export const shift = HOW_SHIFT;
 export const from = 12.8;
 export const to = 28.85;
 

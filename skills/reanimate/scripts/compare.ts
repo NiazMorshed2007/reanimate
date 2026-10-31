@@ -20,7 +20,7 @@ compare.ts — frame-by-frame comparison of clone vs reference.
   --pixel-threshold T pixelmatch colour sensitivity 0..1, default 0.1 (raise to ignore anti-aliasing/noise)
   --threshold T       pass if mean mismatch ≤ T (fraction of pixels), default 0.05; use 0.01-0.02 for pixel fidelity
   --motion-threshold T pass if activity-curve timing error ≤ T seconds, default 0.08
-  --fps N             frames per second (default: frames.json beside --ref, else 25)
+  --fps N             frames per second (default: frames.json beside --ref or next to it, else 25)
   --blur R            box-blur both sets by R px before comparing: particles, noise and grain that are placed
                       differently but have the same density, colour and motion stop counting as mismatch
                       (try 4-8). Reports both the sharp and the blurred mismatch.
@@ -33,7 +33,9 @@ Both frame sets must share fps and be clipped to the same region; the clone is r
 const a = parseArgs(process.argv.slice(2));
 if (a.help || !a.ref || !a.clone || !a.out) usage(HELP);
 const refDir = abs(String(a.ref)), cloneDir = abs(String(a.clone)), out = ensureDir(abs(String(a.out)));
-const fps = num(a.fps, existsSync(join(refDir, "frames.json")) ? Number(readJson(join(refDir, "frames.json")).fps) || 25 : 25);
+// frames.ts writes frames.json beside the frames, capture.ts one level up
+const framesJson = [join(refDir, "frames.json"), join(refDir, "..", "frames.json")].find((p) => existsSync(p));
+const fps = num(a.fps, framesJson ? Number(readJson(framesJson).fps) || 25 : 25);
 const pixelThreshold = num(a["pixel-threshold"], 0.1);
 const threshold = num(a.threshold, 0.05);
 const motionThreshold = num(a["motion-threshold"], 0.08);

@@ -4,11 +4,11 @@
 import { BEAT, DURATION, INK, SUBTLE, T0, bar, clamp, ease, el, lerp, mix, presence, prog, put, setStyle } from "./lib.js";
 
 export const name = "install";
-export const from = 56.3;
+export const from = 39.2;
 export const to = DURATION + 1;
 
-const AT = bar(20.5); // 56.83
-const INK_AT = bar(22); // the word turns from SUBTLE to INK
+const AT = bar(14.25); // 40.17
+const INK_AT = bar(15.75); // the word turns from SUBTLE to INK
 const CMD = "npx skills add NiazMorshed2007/reanimate -g";
 
 let root, glow, word, chars, ghosts, pill, typed, caret, copy, copyLabel, hint, links, wordW;

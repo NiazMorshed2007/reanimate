@@ -14,9 +14,9 @@ const SRC = join(SITE, "video", "out", "reanimate-demo.mp4");
 const WEB = join(SITE, "public", "demo.mp4");
 const README = join(SITE, "..", ".github", "assets", "demo.webp");
 
-// [from, to] in seconds of the video: the title, recording the three originals, verifying the copies,
-// Liveblocks, the mosaic turning into the helix, and the install card turning to ink
-const MOMENTS = [[0.3, 4.4], [13.3, 17.1], [22.0, 24.7], [33.4, 35.9], [47.4, 51.9], [57.6, 61.8]];
+// [from, to] in seconds of the video: the title and the prompts, the first clones, the camera pulling back
+// from the cube into the helix, recording the three originals, and the install card turning to ink
+const MOMENTS = [[0.3, 5.9], [6.1, 9.6], [15.4, 21.0], [24.0, 26.4], [41.0, 45.0]];
 const FADE = 0.3;
 const WIDTH = 760; // as wide as the README shows it
 const FPS = 15;
@@ -32,7 +32,7 @@ run("ffmpeg", [
   "-v", "error", "-y", "-i", SRC,
   "-c:v", "libx264", "-preset", "slow", "-crf", "24", "-tune", "animation", "-pix_fmt", "yuv420p",
   "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv",
-  "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", WEB,
+  "-an", "-movflags", "+faststart", WEB,
 ]);
 console.log(`wrote ${WEB} (${mb(WEB)})`);
 

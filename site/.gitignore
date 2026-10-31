@@ -50,5 +50,3 @@ next-env.d.ts
 # demo video: recorded clips and renders (video/scripts/clips.ts, render.ts)
 /video/clips/
 /video/out/
-# the soundtrack isn't passed on as a file (Mixkit's licence); video/README.md has the command to make it
-/video/assets/soundtrack.mp3
