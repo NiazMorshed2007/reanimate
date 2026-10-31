@@ -47,7 +47,7 @@ All scripts are run with `bun <skill>/scripts/<name>.ts --help`. They are determ
 
 Read `references/capture.md` for the recipe for your source type. In short:
 
-- **Website**: `capture.ts --url … --out ref --selector <section> --trigger load|scroll|hover|click|none --duration … --track "<moving elements>"`. You get `video.webm`, `frames/`, `inspect.json` (declared animations, keyframes, computed styles, fonts, detected libraries) and `track.json` (per animation frame position, size, opacity, transform of each tracked element). For CSS/WAAPI motion `inspect.json` often contains the exact durations, delays and easings: use them, it beats estimating.
+- **Website**: `capture.ts --url … --out ref --selector <section> --trigger load|scroll|hover|leave|move|drag|click|none --duration … --track "<moving elements>" --track-props "<non-transform properties>"`. You get `video.webm`, `frames/`, `inspect.json` (declared animations, keyframes, computed styles, fonts, detected libraries) and `track.json` (per animation frame position, size, opacity, transform of each tracked element, the `--track-props` you asked for, and the live pointer position). For CSS/WAAPI motion `inspect.json` often contains the exact durations, delays and easings: use them, it beats estimating.
 - **Video or gif**: `frames.ts --in file --out ref/frames --fps 10..30 --start … --end … --crop …`. Probe first with `--probe`, then view a few frames to find the crop of the widget you are cloning.
 - **Canvas, WebGL, WebGPU, 3D** (`inspect.json › canvases` shows one, or the page uses three.js, Pixi, Babylon, Spline…): add `--clock virtual --gl --assets` to the capture and read `gl/summary.md` (`gl.ts summary <out>`). You get the shader sources, every constant uniform, the scene graph, the render passes, the textures and models, and each animated uniform or object property as a channel in `gl-track.json`. The virtual clock makes every frame exact and every capture identical, random particles included. Read `references/webgl.md`.
 - **Lottie / Rive / prototype export**: the file is the spec; read it, do not re-derive it from pixels.
@@ -73,7 +73,8 @@ Capture the clone with the exact command used for the reference, changing only `
 ```bash
 bun <skill>/scripts/compare.ts --ref ref/frames --clone clone-N/frames --out compare-N
 bun <skill>/scripts/sheet.ts compare --ref ref/frames --clone clone-N/frames --diff compare-N/diff --out compare-N/sheets --every 2
-bun <skill>/scripts/easing.ts --track clone-N/track.json --selector "<el>" --prop <translateY|opacity|…> --compare-track ref/track.json
+bun <skill>/scripts/easing.ts --track clone-N/track.json --selector "<el>" --prop <translateY|opacity|boxShadow.blur> --compare-track ref/track.json [--compare-selector "<clone el>"]
+# custom properties take the = form: --prop=--glow
 ```
 
 For canvas work, also run `gl.ts compare --ref ref --clone clone-N`, which checks canvas settings, draw structure and every animated channel.
@@ -100,6 +101,7 @@ The final message must stand alone:
 - Reference recorded on a loaded page vs clone captured cold: use `--wait-before`, or `--trigger none` with a `--pre-js` that restarts the animation, so both start from rest.
 - Scroll-driven motion: it is a function of scroll position, not time. Capture both with the same `--scroll-steps` and `--scroll-ms`, and compare per scroll position (the track's `scrollY`), not per second.
 - JS libraries (GSAP, Framer Motion springs): `--playback-rate` does not slow them. Use `track.json` and `easing.ts` (it reports overshoot and "spring-like") and tune spring parameters by the overshoot and settle time.
+- Hover, press or pointer motion that changes shadow, blur, colour, letter-spacing or a registered custom property instead of a transform: the track only records geometry by default, so list those properties in `--track-props` (e.g. `"boxShadow,filter,backgroundColor,--glow"`) or the property looks static and the spec row ends up guessed. Read them back with `easing.ts --prop boxShadow.blur` / `filter.brightness` / `backgroundColor.r` / `--prop=--glow`.
 - Videos of someone else's screen have a cursor, a browser chrome and compression noise: crop them out and raise `--pixel-threshold` a little (0.15) rather than chasing noise.
 - Canvas and WebGL captured on the real clock: frames drop in software GL and random content differs on every load, so the comparison measures the machine. Capture both sides with `--clock virtual` and the same `--seed`.
 - Rebuilding a shader from screenshots: the trace already has its source and every constant. Read `gl/shaders/` and the fixed uniforms before writing GLSL.
