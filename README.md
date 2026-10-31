@@ -38,7 +38,7 @@ The [skills CLI](https://skills.sh) asks which agents to set up; add `-a claude-
 /reanimate the logo marquee from https://example.com, with our logos and pause on hover
 ```
 
-Needs [Bun](https://bun.sh) 1.1 or later, on macOS or Linux (Windows is untested). The first run installs a static ffmpeg into the skill's folder and Playwright's Chromium into Playwright's usual cache, about 250 MB together. No API keys. Other agents that read `SKILL.md` can install it too, but it has only been tested with Claude Code.
+Needs [Bun](https://bun.sh) 1.1 or later, on macOS, Linux or Windows (Windows: run the scripts from Git Bash, which Claude Code uses on Windows). The first run installs a static ffmpeg into the skill's folder and Playwright's Chromium into Playwright's usual cache, about 250 MB together. No API keys. Other agents that read `SKILL.md` can install it too, but it has only been tested with Claude Code.
 
 ## How it works
 
