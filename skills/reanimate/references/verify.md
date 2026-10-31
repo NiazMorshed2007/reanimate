@@ -12,7 +12,7 @@ A round is: capture the clone the same way as the reference → `compare.ts` →
 - **activity curve**: bars of change per frame. Same shape = same easing and stagger; a clone whose bars are front-loaded against a reference whose bars are even is using a stronger ease-out, and so on.
 - `diff/NNNN.png`: red where pixels differ. `sheet.ts compare --diff` puts reference, clone and diff side by side with the mismatch per row.
 
-`easing.ts --compare-track other.json` prints `maxAbsDiff` / `meanAbsDiff` of the property over time between the two tracks (in CSS px or opacity units) and the best-fit easing of the clone, to compare with the reference's.
+`easing.ts --compare-track other.json` prints `maxAbsDiff` / `meanAbsDiff` of the property over time between the two tracks (in CSS px, opacity units, blur px or colour channel) and the best-fit easing of the clone, to compare with the reference's. Run it for the non-transform properties too (`--prop boxShadow.blur`, `filter.brightness`, `--prop=--glow`); when the clone's element has a different selector, pass `--compare-selector "<clone el>"`.
 
 ## Pass criteria
 
