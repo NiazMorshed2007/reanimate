@@ -7,6 +7,7 @@ import { chromium, type Page, type Request, type Response } from "playwright";
 import { PNG } from "pngjs";
 import { join, basename } from "node:path";
 import { createHash } from "node:crypto";
+import { pathToFileURL } from "node:url";
 import { existsSync, readFileSync, renameSync, readdirSync, statSync, writeFileSync, rmSync, unlinkSync } from "node:fs";
 import { ensureDir, ffmpeg, num, pad, parseArgs, parseRect, parseSize, usage, writeJson, abs, SCRIPTS_DIR } from "./lib.ts";
 import { writeGlArtifacts } from "./gl.ts";
@@ -98,7 +99,8 @@ const padPx = num(a.pad, 0);
 const wantVideo = !a["no-video"];
 const trackSelectors: string[] = (a.track ? String(a.track) : selector || "").split(",").map((s) => s.trim()).filter(Boolean);
 let url: string = String(a.url);
-if (!/^[a-z]+:/i.test(url)) url = "file://" + abs(url);
+// A scheme has two or more letters, so a Windows drive letter ("C:\page.html") is treated as a path.
+if (!/^[a-z][a-z0-9+.-]+:/i.test(url)) url = pathToFileURL(abs(url)).href;
 
 const hoverAt = String(a["hover-at"] ?? "0.5,0.5").split(",").map(Number);
 const preHover: string | undefined = a["pre-hover"] ? String(a["pre-hover"]) : undefined;

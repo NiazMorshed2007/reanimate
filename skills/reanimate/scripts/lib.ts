@@ -7,7 +7,7 @@ import { spawnSync } from "node:child_process";
 export const SCRIPTS_DIR = dirname(fileURLToPath(import.meta.url));
 
 export function ffmpegPath(): string {
-  const p = join(SCRIPTS_DIR, "node_modules", "ffmpeg-static", "ffmpeg");
+  const p = join(SCRIPTS_DIR, "node_modules", "ffmpeg-static", process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg");
   if (!existsSync(p)) throw new Error(`ffmpeg not installed, run ${join(SCRIPTS_DIR, "setup.sh")}`);
   return p;
 }
