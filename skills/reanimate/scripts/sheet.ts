@@ -93,6 +93,9 @@ const page = await browser.newPage({ viewport: { width: 1600, height: 900 }, dev
 const paths: string[] = [];
 for (const s of sheets) {
   await page.setContent(s.html, { waitUntil: "load" });
+  // wait for a painted frame: on Windows a full-page screenshot right after setContent in a fresh Chromium
+  // failed 11 of 40 times ("Unable to capture screenshot"); after two animation frames, 0 of 40
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
   const p = join(out, s.name);
   await page.screenshot({ path: p, fullPage: true });
   paths.push(p);
