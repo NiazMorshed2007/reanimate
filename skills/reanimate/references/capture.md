@@ -28,6 +28,8 @@ Triggers:
 
 Useful options:
 
+- `--track-props "boxShadow,filter,backgroundColor,letterSpacing,--glow"` records extra computed properties per frame, for hover/press motion that is not a transform (a shadow that grows, a blur that clears, a hue that shifts, a registered custom property). Hyphenated names are fine. Read them back with `easing.ts --prop boxShadow.blur`, `--prop filter.brightness`, `--prop backgroundColor.r`, `--prop=--glow`. Each property adds a string per sample, so list only what the motion touches.
+- Every `track.json` sample also carries `pointer: [x, y]` (viewport px, `null` before the first pointer event), so pointer-driven motion can be checked against where the pointer actually was.
 - `--pre-js "document.querySelector('.cookie button')?.click()"` dismisses overlays or opens the state you need before the trigger.
 - `--playback-rate 0.25` slows CSS animations and transitions 4x (CDP). The frames then have 4x the time resolution (`--fps 100` works). JS-driven motion ignores it; use `--clock virtual` for that.
 - `--clock virtual` runs the page on a clock the capturer advances frame by frame, so every frame is exact (any `--fps`, for CSS and JS motion alike) and repeated captures are identical. `--seed N` seeds `Math.random`. Use both for canvas, WebGL, particles, and anything random or heavy; see `references/webgl.md`.
@@ -45,7 +47,7 @@ What you get and what each is for:
 | `inspect.json › nodes` | rect and the motion-relevant computed styles of up to 150 nodes under the target: fonts, colours, radii, shadows, overflow, transforms. The static side of the spec. |
 | `inspect.json › libs` | gsap, framer-motion, lottie, webgl, lenis, webflow, scroll-driven CSS… tells you where the motion is defined and which capture limits apply. |
 | `inspect.json › canvases` | every canvas with its context type (`webgl2`, `2d`, `webgpu`), drawing-buffer size and CSS box. |
-| `track.json` | one sample per animation frame (≈16 ms) per tracked selector: `x y w h opacity transform`. Feed it to `easing.ts`. |
+| `track.json` | one sample per animation frame (≈16 ms) per tracked selector: `x y w h opacity transform`, the `--track-props` you asked for, and `pointer`. `trigger` says what t=0 means, so `easing.ts` measures hover/click/scroll delays from the trigger. Feed it to `easing.ts`. |
 | `frames/` + `frames.json` | the pictures; `triggerFrame` is where t=0 of the motion sits. |
 | `gl/`, `gl-track.json`, `three/` (`--gl`) | shaders, programs, draw calls, passes, textures, scene graphs and every animated uniform or scene value as a channel; `bun gl.ts summary <out>` reads it. See `references/webgl.md`. |
 | `assets/` (`--assets`) | the page's models, scene files, shader files, sampled textures and scripts. |

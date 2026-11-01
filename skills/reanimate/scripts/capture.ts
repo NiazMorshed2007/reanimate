@@ -57,6 +57,11 @@ Output
                         or --clock virtual)
   --playback-rate R     slow CSS/WAAPI animations with CDP (0.25 = 4x slower). JS-driven motion is not affected.
   --track "CSS, CSS"    elements sampled every animation frame → track.json (default: --selector, if any)
+  --track-props "P, P"  extra computed properties per tracked element, e.g. boxShadow,filter,backgroundColor,
+                        color,letterSpacing,borderRadius — anything :hover moves that is not a transform.
+                        Custom properties work too (--glow, --angle); hyphenated names are accepted as-is.
+                        Read them back with easing.ts --prop <name>[.<part>]
+                        Each adds a string per sample, so ask only for what the motion touches.
   --no-video            skip the video and frames (inspection + track only)
   --headed              show the browser (needs a display)
 
@@ -97,6 +102,11 @@ const target: string | undefined = a.target || selector;
 const padPx = num(a.pad, 0);
 const wantVideo = !a["no-video"];
 const trackSelectors: string[] = (a.track ? String(a.track) : selector || "").split(",").map((s) => s.trim()).filter(Boolean);
+// getComputedStyle exposes camelCase, so accept border-radius and borderRadius alike; custom names (--glow) pass through untouched
+if (a["track-props"] === true) throw new Error('--track-props needs a list, e.g. --track-props "boxShadow,filter" — for a single custom property write --track-props=--glow');
+const trackProps: string[] = (a["track-props"] ? String(a["track-props"]) : "").split(",").map((s) => s.trim()).filter(Boolean)
+  .map((s) => (s.startsWith("--") ? s : s.replace(/-([a-z])/g, (_, c) => c.toUpperCase())));
+if (trackProps.length && !trackSelectors.length) throw new Error("--track-props needs --track (or --selector) to say which elements to read them from");
 let url: string = String(a.url);
 if (!/^[a-z]+:/i.test(url)) url = "file://" + abs(url);
 
@@ -139,8 +149,12 @@ const CTX_PROBE = `(() => {
 // ---------- in-page tracker (installed before any script runs so load-triggered motion is caught) ----------
 const TRACKER = `(() => {
   const sels = __SELS__;
+  const props = __PROPS__;
   const w = window;
-  w.__mc = { samples: [], t0: null, running: true };
+  w.__mc = { samples: [], t0: null, running: true, pointer: null };
+  // the pointer the capture drives arrives as real input events, so listening here records
+  // where it actually was — pointer-driven motion is a function of position, not of time.
+  addEventListener('pointermove', (e) => { w.__mc.pointer = [+e.clientX.toFixed(1), +e.clientY.toFixed(1)]; }, true);
   const sample = () => {
     if (!w.__mc.running) return;
     const t = performance.now();
@@ -150,10 +164,17 @@ const TRACKER = `(() => {
       if (!el) { els[s] = null; continue; }
       const r = el.getBoundingClientRect();
       const cs = getComputedStyle(el);
-      els[s] = { x: +r.x.toFixed(2), y: +r.y.toFixed(2), w: +r.width.toFixed(2), h: +r.height.toFixed(2),
+      const extra = {};
+      for (const p of props) {
+        // registered custom properties are where a lot of hover motion actually lives, and they need getPropertyValue
+        const v = p.startsWith('--') ? cs.getPropertyValue(p) : cs[p];
+        if (v !== undefined && v !== '') extra[p] = typeof v === 'number' ? +v.toFixed(3) : v.trim();
+      }
+      // extra first: a tracked name equal to a built-in (opacity, …) must not replace the typed value
+      els[s] = { ...extra, x: +r.x.toFixed(2), y: +r.y.toFixed(2), w: +r.width.toFixed(2), h: +r.height.toFixed(2),
                  opacity: +(+cs.opacity).toFixed(3), transform: cs.transform, clipPath: cs.clipPath === 'none' ? undefined : cs.clipPath };
     }
-    w.__mc.samples.push({ t, scrollY: w.scrollY, els });
+    w.__mc.samples.push({ t, scrollY: w.scrollY, pointer: w.__mc.pointer, els });
     requestAnimationFrame(sample);
   };
   requestAnimationFrame(sample);
@@ -347,7 +368,7 @@ const context = await browser.newContext({
 await context.addInitScript(CTX_PROBE);
 if (virtual || seed !== null) await context.addInitScript(inpage("clock.js", { virtual, seed, rafHz, freezeAtStart: virtual }));
 if (wantGl) await context.addInitScript(inpage("gl-hooks.js", { dumpBuffers: glBuffersMb * 1024 * 1024 }));
-if (trackSelectors.length) await context.addInitScript(TRACKER.replace("__SELS__", JSON.stringify(trackSelectors)));
+if (trackSelectors.length) await context.addInitScript(TRACKER.replace("__SELS__", JSON.stringify(trackSelectors)).replace("__PROPS__", JSON.stringify(trackProps)));
 const page = await context.newPage();
 const tPageCreated = Date.now();
 
@@ -597,18 +618,18 @@ if (wantVideo && !virtual) {
 
 // normalise track time: t=0 at the trigger (for --trigger load, at the first animation frame of the document)
 const t0 = perfAtTrigger ?? (track.length ? track[0].t : 0);
-const trackOut = { selectors: trackSelectors, playbackRate: rate, note: "t in ms of reference time, 0 = trigger; negative samples are before it",
+const trackOut = { selectors: trackSelectors, props: trackProps, trigger, playbackRate: rate, note: "t in ms of reference time, 0 = trigger (for pointer/scroll triggers) or capture start; negative samples are before it; pointer is the last real pointermove position",
   samples: track.map((s: any) => ({ ...s, t: +((s.t - t0) * rate).toFixed(1) })) };
 if (trackSelectors.length) writeJson(join(out, "track.json"), trackOut);
 writeJson(join(out, "inspect.json"), inspect);
 const glSummary = gl ? writeGlArtifacts(out, gl, t0, virtual ? 1 : rate) : null;
 if (wantAssets) writeJson(join(out, "assets.json"), assetIndex.sort((x, y) => x.file.localeCompare(y.file)));
-writeJson(join(out, "capture.json"), { url, out, viewport, scale, fps, rate, trigger, target, selector, clip, duration, preRoll, waitBefore, scrollTo: a["scroll-to"], track: trackSelectors,
+writeJson(join(out, "capture.json"), { url, out, viewport, scale, fps, rate, trigger, target, selector, clip, duration, preRoll, waitBefore, scrollTo: a["scroll-to"], track: trackSelectors, trackProps,
   clock: virtual ? "virtual" : "real", seed, rafHz: virtual ? rafHz : undefined, gpu: gpuMode, renderer, gl: wantGl, capturedAt: new Date().toISOString() });
 
 console.log(JSON.stringify({
   out, frames: frames && { count: frames.count, fps, triggerFrame: frames.triggerFrame, clip, clock: frames.clock },
   libs: inspect.libs, fonts: inspect.fonts.slice(0, 8), animations: inspect.animations.length, keyframes: inspect.keyframes.length,
-  target: inspect.target, trackSamples: track.length, trackSelectors, renderer,
+  target: inspect.target, trackSamples: track.length, trackSelectors, trackProps, renderer,
   gl: glSummary ?? undefined, assets: wantAssets ? assetIndex.length : undefined,
 }, null, 2));
